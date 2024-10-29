@@ -1,45 +1,48 @@
 #include "Arduino.h"
+#include "FS.h"
+#include "SPIFFS.h"
 #include "driver/i2s.h"
-#include "AudioSampleSample.h" // Include your audio sample header
 
-// Define the I2S pins (according to your setup)
+// Define the I2S pins (adjust as needed)
 #define I2S_WS   6    // LRCLK (Word Select)
 #define I2S_BCK  7    // Bit Clock
 #define I2S_DATA 9    // I2S Data
 
-#define SAMPLE_RATE 44100  // Make sure this matches your audio file's sample rate
-#define BUFFER_SIZE 256
+#define SAMPLE_RATE 16000    // Ensure this matches your audio file's sample rate
+#define BUFFER_SIZE 512      // Buffer size for reading data
+#define GAIN 2.0             // Amplification factor (increase or decrease as needed)
 
-// Buffer to hold audio samples for processing
-int16_t audioBuffer[BUFFER_SIZE];
-unsigned int currentSampleIndex = 0;
+File audioFile;
+int16_t audioBuffer[BUFFER_SIZE];  // Buffer to hold audio samples
 
-void fillBuffer() {
-    for (int i = 0; i < BUFFER_SIZE; i += 2) {
-        if (currentSampleIndex < 79937) { // Use your actual array size
-            // Convert 32-bit sample to 16-bit
-            // Assuming the original sample is in the correct format, you might need to adjust this conversion
-            int32_t sample = pgm_read_dword(&AudioSampleSample[currentSampleIndex]);
-            
-            // Convert to 16-bit and handle stereo
-            audioBuffer[i] = (int16_t)(sample >> 16);     // Left channel
-            audioBuffer[i + 1] = (int16_t)(sample >> 16); // Right channel
-            
-            currentSampleIndex++;
-        } else {
-            // If we've reached the end of the sample, reset or fill with silence
-            audioBuffer[i] = 0;
-            audioBuffer[i + 1] = 0;
-            // Optionally reset the index to loop the audio
-            // currentSampleIndex = 0;
-        }
+void amplifyBuffer(int16_t *buffer, size_t size, float gain) {
+    for (size_t i = 0; i < size; i++) {
+        int32_t sample = buffer[i] * gain;
+        // Clip the sample to prevent overflow
+        buffer[i] = (sample > INT16_MAX) ? INT16_MAX : (sample < INT16_MIN) ? INT16_MIN : sample;
     }
 }
 
 void setup() {
     Serial.begin(115200);
 
-    // Configure I2S interface
+    // Initialize SPIFFS
+    if (!SPIFFS.begin(true)) {
+        Serial.println("SPIFFS Mount Failed");
+        return;
+    }
+
+    // Open the audio file
+    audioFile = SPIFFS.open("/sound.wav", "r");
+    if (!audioFile) {
+        Serial.println("Failed to open WAV file in SPIFFS");
+        return;
+    }
+
+    // Skip WAV header (44 bytes)
+    audioFile.seek(44, SeekSet);
+
+    // Configure I2S
     i2s_config_t i2s_config = {
         .mode = (i2s_mode_t)(I2S_MODE_MASTER | I2S_MODE_TX),
         .sample_rate = SAMPLE_RATE,
@@ -64,21 +67,26 @@ void setup() {
     i2s_set_pin(I2S_NUM_0, &pin_config);
     i2s_set_clk(I2S_NUM_0, SAMPLE_RATE, I2S_BITS_PER_SAMPLE_16BIT, I2S_CHANNEL_STEREO);
 
-    Serial.println("Starting audio playback...");
+    Serial.println("Starting audio playback with amplification...");
 }
 
 void loop() {
-    fillBuffer();  // Fill the buffer with audio data
-    size_t bytes_written;
+    if (audioFile.available()) {
+        size_t bytesRead = audioFile.read((uint8_t *)audioBuffer, BUFFER_SIZE * sizeof(int16_t));
 
-    // Write the buffer to I2S
-    i2s_write(I2S_NUM_0, audioBuffer, sizeof(audioBuffer), &bytes_written, portMAX_DELAY);
+        // Amplify the buffer
+        amplifyBuffer(audioBuffer, BUFFER_SIZE, GAIN);
 
-    // Optional: Add some basic playback control
-    if (currentSampleIndex >= 79937) {
-        // End of audio reached
-        delay(1000);  // Wait before looping or stopping
-        // Uncomment the next line if you want to loop the audio
-        // currentSampleIndex = 0;
+        size_t bytesWritten;
+        // Write the amplified buffer to I2S
+        i2s_write(I2S_NUM_0, audioBuffer, bytesRead, &bytesWritten, portMAX_DELAY);
+
+        if (bytesRead < BUFFER_SIZE * sizeof(int16_t)) {
+            // If less data read than buffer size, end of file reached
+            audioFile.seek(44, SeekSet);  // Reset to loop the audio
+        }
+    } else {
+        Serial.println("Audio playback finished");
+        audioFile.seek(44, SeekSet);  // Reset to loop the audio
     }
 }
