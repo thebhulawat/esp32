@@ -79,14 +79,14 @@ void setup() {
 
   listDir(SPIFFS, "/", 0);
 
-  // // Create the WAV file in SPIFFS only if it doesn't exist
-  // const char *filePath = "/sound.wav";
-  // if (!SPIFFS.exists(filePath)) {
-  //   Serial.println("Creating WAV file");
-  //   createWavFile(SPIFFS, filePath);
-  // } else {
-  //   Serial.println("WAV file already exists in SPIFFS.");
-  // }
+  // Create the WAV file in SPIFFS only if it doesn't exist
+  const char *filePath = "/sound.wav";
+  if (!SPIFFS.exists(filePath)) {
+    Serial.println("Creating WAV file");
+    createWavFile(SPIFFS, filePath);
+  } else {
+    Serial.println("WAV file already exists in SPIFFS.");
+  }
 
   // Read back the WAV file to verify
   //readFile(SPIFFS, filePath);
