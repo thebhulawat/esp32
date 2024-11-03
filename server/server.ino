@@ -4,8 +4,10 @@
 #include <SPIFFS.h>
 
 // Replace with your network credentials
-const char* ssid = "Yashwant jio 4";
-const char* password = "17051969";
+// const char* ssid = "Yashwant jio 4";
+// const char* password = "17051969";
+const char* ssid = "TP-Link_5B38";
+const char* password = "83110122";
 
 #define FORMAT_SPIFFS_IF_FAILED true
 
