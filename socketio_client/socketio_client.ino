@@ -8,14 +8,14 @@ const char* ssid = "TP-Link_5B38";
 const char* password = "83110122";
 
 // Local 
-const char* wsHost = "192.168.0.101";  
-const uint16_t wsPort = 3000;
-const char* wsPath = "/socket.io/?EIO=4";
+// const char* wsHost = "192.168.0.101";  
+// const uint16_t wsPort = 3000;
+// const char* wsPath = "/socket.io/?EIO=4";
 
 // Ngrok configuration
-// const char* wsHost = "a7e4-49-205-34-186.ngrok-free.app";
-// const uint16_t wsPort = 443;  // Always use 443 for secure WebSocket with ngrok
-// const char* wsPath = "/socket.io/?EIO=4";
+const char* wsHost = "167b-49-205-34-186.ngrok-free.app";
+const uint16_t wsPort = 443;  // Always use 443 for secure WebSocket with ngrok
+const char* wsPath = "/socket.io/?EIO=4";
 
 SocketIOclient socketIO;
 WiFiClientSecure client;
@@ -65,8 +65,8 @@ void setup() {
     
     
     // Begin Socket.IO connection
-    //socketIO.beginSSL(wsHost, wsPort, wsPath, "arduino");
-    socketIO.begin(wsHost, wsPort, wsPath, "arduino");
+    socketIO.beginSSL(wsHost, wsPort, wsPath, "arduino");
+    //socketIO.begin(wsHost, wsPort, wsPath, "arduino");
     socketIO.onEvent(socketIOEvent);
     
     Serial.println("Socket.IO setup complete");
