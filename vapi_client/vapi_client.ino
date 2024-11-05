@@ -17,7 +17,7 @@
 #define SAMPLE_RATE 16000U
 #define SAMPLE_BITS 16
 #define VOLUME_GAIN 2
-#define BUFFER_SIZE 512  // Smaller buffer for real-time streaming
+#define BUFFER_SIZE 2048  // Smaller buffer for real-time streaming
 #define PDM_CLK_PIN 42
 #define PDM_DATA_PIN 41
 
@@ -26,8 +26,8 @@ SocketIOclient socketIO;
 I2SClass I2S;
 
 // WebSocket configuration
-const char* ssid = "TP-Link_5B38";         // Your WiFi SSID
-const char* password = "83110122";     // Your WiFi password
+const char* ssid = "TP-Link_5B38";         
+const char* password = "83110122";     
 const char* wsHost = "9526-49-205-34-186.ngrok-free.app";
 const uint16_t wsPort = 443;
 const char* wsPath = "/socket.io/?EIO=4";
