@@ -4,9 +4,9 @@
 #include <ESP_I2S.h>
 
 // Define the I2S pins (adjust as needed)
-#define I2S_WS   6    // LRCLK (Word Select)
+#define I2S_WS   44    // LRCLK (Word Select)
 #define I2S_BCK  7    // Bit Clock
-#define I2S_DATA 9    // I2S Data
+#define I2S_DATA 8    // I2S Data
 
 #define SAMPLE_RATE 16000    // Ensure this matches your audio file's sample rate
 #define BUFFER_SIZE 1024     // Buffer size for reading data
