@@ -1,7 +1,7 @@
 #include "Arduino.h"
 #include "FS.h"
 #include "SPIFFS.h"
-#include <ESP_I2S.h>
+#include "driver/i2s.h"
 
 // Define the I2S pins (adjust as needed)
 #define I2S_WS   6    // LRCLK (Word Select)
@@ -9,14 +9,11 @@
 #define I2S_DATA 9    // I2S Data
 
 #define SAMPLE_RATE 16000    // Ensure this matches your audio file's sample rate
-#define BUFFER_SIZE 1024     // Buffer size for reading data
-#define GAIN 2.0            // Amplification factor
+#define BUFFER_SIZE 1024      // Buffer size for reading data
+#define GAIN 2.0             // Amplification factor (increase or decrease as needed)
 
 File audioFile;
 int16_t audioBuffer[BUFFER_SIZE];  // Buffer to hold audio samples
-
-// Create I2S instance
-I2SClass I2SAudio;
 
 void amplifyBuffer(int16_t *buffer, size_t size, float gain) {
     for (size_t i = 0; i < size; i++) {
@@ -45,49 +42,44 @@ void setup() {
     // Skip WAV header (44 bytes)
     audioFile.seek(44, SeekSet);
 
-    // Initialize I2S
-    Serial.println("Initializing I2S...");
-    
-    // End any existing I2S operations
-    I2SAudio.end();
-    
-    // Configure I2S pins
-    I2SAudio.setPins(I2S_BCK, I2S_WS, I2S_DATA);
-    
-    // Initialize I2S with the configuration
-    if (!I2SAudio.begin(I2S_MODE_STD, 
-                       SAMPLE_RATE, 
-                       I2S_DATA_BIT_WIDTH_16BIT,
-                       I2S_SLOT_MODE_STEREO)) {
-        Serial.println("Failed to initialize I2S!");
-        return;
-    }
+    // Configure I2S
+    i2s_config_t i2s_config = {
+        .mode = (i2s_mode_t)(I2S_MODE_MASTER | I2S_MODE_TX),
+        .sample_rate = SAMPLE_RATE,
+        .bits_per_sample = I2S_BITS_PER_SAMPLE_16BIT,
+        .channel_format = I2S_CHANNEL_FMT_RIGHT_LEFT,
+        .communication_format = I2S_COMM_FORMAT_I2S,
+        .intr_alloc_flags = 0,
+        .dma_buf_count = 8,
+        .dma_buf_len = 64,
+        .use_apll = false
+    };
+
+    i2s_pin_config_t pin_config = {
+        .bck_io_num = I2S_BCK,
+        .ws_io_num = I2S_WS,
+        .data_out_num = I2S_DATA,
+        .data_in_num = I2S_PIN_NO_CHANGE
+    };
+
+    // Install and start I2S driver
+    i2s_driver_install(I2S_NUM_0, &i2s_config, 0, NULL);
+    i2s_set_pin(I2S_NUM_0, &pin_config);
+    i2s_set_clk(I2S_NUM_0, SAMPLE_RATE, I2S_BITS_PER_SAMPLE_16BIT, I2S_CHANNEL_STEREO);
 
     Serial.println("Starting audio playback with amplification...");
 }
 
 void loop() {
     if (audioFile.available()) {
-        // Read audio data into buffer
         size_t bytesRead = audioFile.read((uint8_t *)audioBuffer, BUFFER_SIZE * sizeof(int16_t));
-        size_t samplesRead = bytesRead / sizeof(int16_t);
 
         // Amplify the buffer
-        amplifyBuffer(audioBuffer, samplesRead, GAIN);
+        amplifyBuffer(audioBuffer, BUFFER_SIZE, GAIN);
 
-        // Convert 16-bit samples to bytes and write to I2S
-        uint8_t *byteBuffer = (uint8_t *)audioBuffer;
-        size_t bytesToWrite = samplesRead * sizeof(int16_t);
-        size_t bytesWritten = 0;
-        
-        while (bytesWritten < bytesToWrite) {
-            size_t written = I2SAudio.write(byteBuffer + bytesWritten, 
-                                          bytesToWrite - bytesWritten);
-            if (written == 0) {
-                break;  // Error or buffer full
-            }
-            bytesWritten += written;
-        }
+        size_t bytesWritten;
+        // Write the amplified buffer to I2S
+        i2s_write(I2S_NUM_0, audioBuffer, bytesRead, &bytesWritten, portMAX_DELAY);
 
         if (bytesRead < BUFFER_SIZE * sizeof(int16_t)) {
             // If less data read than buffer size, end of file reached
@@ -98,3 +90,4 @@ void loop() {
         audioFile.seek(44, SeekSet);  // Reset to loop the audio
     }
 }
+
