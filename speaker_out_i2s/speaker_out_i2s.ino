@@ -12,6 +12,7 @@
 #define BUFFER_SIZE 1024     // Buffer size for reading data
 #define GAIN 2.0            // Amplification factor
 
+
 File audioFile;
 int16_t audioBuffer[BUFFER_SIZE];  // Buffer to hold audio samples
 
@@ -95,6 +96,6 @@ void loop() {
         }
     } else {
         Serial.println("Audio playback finished");
-        audioFile.seek(44, SeekSet);  // Reset to loop the audio
+        //audioFile.seek(44, SeekSet);  // Reset to loop the audio
     }
 }
